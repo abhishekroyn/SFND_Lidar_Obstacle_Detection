@@ -1,7 +1,7 @@
 // PCL lib Functions for processing point clouds
 
 #include "processPointClouds.h"
-
+#include <cmath>
 
 //constructor:
 template<typename PointT>
@@ -65,7 +65,18 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
     // Time segmentation process
     auto startTime = std::chrono::steady_clock::now();
 
-    // TODO:: Fill in this function to find inliers for the cloud.
+    // Find inliers for the cloud
+
+    // Apply RANSAC plane segmentation algorithm
+    std::unordered_set<int> inliersSet = RansacPlane(cloud, maxIterations, distanceThreshold);
+
+    pcl::PointIndices::Ptr inliers {new pcl::PointIndices}; // inliers(new pcl::PointIndices());
+    for (int index : inliersSet) {
+        inliers->indices.push_back(index);
+    }
+
+    /*
+    // PCL's built in RANSAC function
     pcl::SACSegmentation<PointT> seg;
     pcl::PointIndices::Ptr inliers {new pcl::PointIndices};
     pcl::ModelCoefficients::Ptr coefficients {new pcl::ModelCoefficients};
@@ -79,6 +90,8 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
     // Segment the largest planar component from the input cloud
     seg.setInputCloud(cloud);
     seg.segment (*inliers, *coefficients);
+    */
+
     if(inliers->indices.size() == 0)
     {
         std::cout << "Could not estimate a planar model for the given dataset." << std::endl;
@@ -88,6 +101,7 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
     auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
     std::cout << "plane segmentation took " << elapsedTime.count() << " milliseconds" << std::endl;
 
+    // Extract two point clouds - one with ground plane and another with objects.
     std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> segResult = SeparateClouds(inliers,cloud);
     return segResult;
 }
@@ -167,4 +181,77 @@ std::vector<boost::filesystem::path> ProcessPointClouds<PointT>::streamPcd(std::
 
     return paths;
 
+}
+
+// Implement RANSAC plane segmentation algorithm
+template<typename PointT>
+std::unordered_set<int> ProcessPointClouds<PointT>::RansacPlane(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol)
+{
+	// Time segmentation process
+	auto startTime = std::chrono::steady_clock::now();
+
+	std::unordered_set<int> inliersResult;
+	srand(time(NULL));
+
+	// For max iterations
+	// Randomly sample subset and fit line
+	// Measure distance between every point and fitted line
+	// If distance is smaller than threshold count it as inlier
+	// Return indicies of inliers from fitted line with most inliers
+
+	while(maxIterations--)
+	{
+
+		// Randomly pick two points
+		std::unordered_set<int> inliers;
+		while (inliers.size() < 3)
+			inliers.insert(rand() % (cloud->points.size()));
+
+		float x1, y1, z1, x2, y2, z2, x3, y3, z3;
+
+		auto itr = inliers.begin();
+		x1 = cloud->points[*itr].x;
+		y1 = cloud->points[*itr].y;
+		z1 = cloud->points[*itr].z;
+		itr++;
+		x2 = cloud->points[*itr].x;
+		y2 = cloud->points[*itr].y;
+		z2 = cloud->points[*itr].z;
+		itr++;
+		x3 = cloud->points[*itr].x;
+		y3 = cloud->points[*itr].y;
+		z3 = cloud->points[*itr].z;
+
+		float a = (y2-y1)*(z3-z1) - (z2-z1)*(y3-y1);
+		float b = (z2-z1)*(x3-x1) - (x2-x1)*(z3-z1);
+		float c = (x2-x1)*(y3-y1) - (y2-y1)*(x3-x1);
+		float d = - (a*x1 + b*y1 + c*z1);
+
+		for(int index = 0; index < cloud->points.size(); index++)
+		{
+			if(inliers.count(index) > 0)
+				continue;
+
+			pcl::PointXYZ point = cloud->points[index];
+			float x4 = point.x;
+			float y4 = point.y;
+			float z4 = point.z;
+
+			float d = fabs(a*x4 + b*y4 + c*z4 + d) / sqrt(a*a + b*b + c*c);
+
+			if(d <= distanceTol)
+				inliers.insert(index);
+		}
+
+		if(inliers.size() > inliersResult.size())
+		{
+			inliersResult = inliers;
+		}
+	}
+
+	auto endTime = std::chrono::steady_clock::now();
+	auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds> (endTime - startTime);
+	std::cout << "Ransac took " << elapsedTime.count() << " milliseconds" << std::endl;
+
+	return inliersResult;
 }

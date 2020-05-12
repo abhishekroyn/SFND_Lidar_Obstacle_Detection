@@ -45,9 +45,7 @@ The code used for clustering used the Euclidean clustering algorithm along with 
 The code submitted here did not sacrifice comprehension, stability, or robustness for speed. However, good and efficient coding practices were maintained when writing functions.
 
 There were a few examples showing that inefficiencies were avoided,
-	* did not run the exact same calculation repeatedly; ran it once, stored the value and then reused the value later, for example, found point clouds for plane, and excluded them from total point clouds to obtain point clouds for obstacles, instead of calculating them again.
-	* made sure that loops didn't run too many times, by adding maximum iteration counts to them.
-	* did not create unnecessarily complex data structures when simpler structures work equivalently, for example, divided the steps into subroutines and added recursive function with a checkpoint to come out of loop, wherever needed.
-	* Only necessary control flow checks were included, for example, at various instances only those values were kept for further processing which met specific criteria.
-
-
+* did not run the exact same calculation repeatedly; ran it once, stored the value and then reused the value later, for example, found point clouds for plane, and excluded them from total point clouds to obtain point clouds for obstacles, instead of calculating them again.
+* made sure that loops didn't run too many times, by adding maximum iteration counts to them.
+* did not create unnecessarily complex data structures when simpler structures work equivalently, for example, divided the steps into subroutines and added recursive function with a checkpoint to come out of loop, wherever needed.
+* Only necessary control flow checks were included, for example, at various instances only those values were kept for further processing which met specific criteria.

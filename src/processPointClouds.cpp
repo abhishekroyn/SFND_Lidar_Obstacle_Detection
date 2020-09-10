@@ -25,7 +25,7 @@ typename pcl::PointCloud<PointT>::Ptr ProcessPointClouds<PointT>::FilterCloud(ty
     auto startTime = std::chrono::steady_clock::now();
 
     // Fill in the function to do voxel grid point reduction and region based filtering
-    // Create the filtering object: downsample the dataset using a leaf size of .2m
+    // Create the filtering object: downsample the dataset using a leaf size of .15m
     pcl::VoxelGrid<PointT> vg;
     typename pcl::PointCloud<PointT>::Ptr cloudFiltered (new pcl::PointCloud<PointT>);
     //std::cout << typeid(vg).name() << endl;
@@ -261,21 +261,24 @@ std::vector<typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<PointT>::C
         points.push_back(point);
     }
 
-    float distanceTol = 3.0;
+    float distanceTol = clusterTolerance;
     std::vector<std::vector<int>> clusterIndices = euclideanCluster(points, tree, distanceTol);
 
     for(std::vector<int> clusterIndex : clusterIndices)
     {
-        typename pcl::PointCloud<PointT>::Ptr cloudCluster (new pcl::PointCloud<PointT>);
+        if (clusterIndex.size() >= minSize && clusterIndex.size() <= maxSize)
+        {
+            typename pcl::PointCloud<PointT>::Ptr cloudCluster (new pcl::PointCloud<PointT>);
 
-        for(int index : clusterIndex)
-            cloudCluster->points.push_back(cloud->points[index]);
+            for(int index : clusterIndex)
+                cloudCluster->points.push_back(cloud->points[index]);
 
-        cloudCluster->width = cloudCluster->points.size();
-        cloudCluster->height = 1;
-        cloudCluster->is_dense = true;
+            cloudCluster->width = cloudCluster->points.size();
+            cloudCluster->height = 1;
+            cloudCluster->is_dense = true;
 
-        clusters.push_back(cloudCluster);
+            clusters.push_back(cloudCluster);
+        }
     }
 
     /*
